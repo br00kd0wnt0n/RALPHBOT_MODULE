@@ -2,14 +2,22 @@ import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import MessageBubble from './MessageBubble';
 import BotScreen from './BotScreen';
+import AudioControls from './AudioControls';
+import { VisualEffectsProvider, useVisualEffects } from './VisualEffects';
 import { sendMessage, getHealth } from '../services/api';
-import { playSound } from '../services/audio';
+import { 
+  playSound, 
+  speakText, 
+  queueVoice, 
+  stopVoice, 
+  triggerSoundsFromText,
+  getAudioSettings 
+} from '../services/audio';
 import { applyTextEffects } from '../utils/effects';
-import { startVoiceRecognition, stopVoiceRecognition, speakText, stopSpeaking, isVoiceSupported, getVoiceStatus } from '../services/voice';
-import { motion, AnimatePresence } from 'framer-motion';
-import '../styles/ChatBot.css';
+import './ChatBot.css';
+import { useVoiceRecognition } from '../services/voiceRecognition';
 
-const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:3001';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001';
 
 const ChatBot = ({ onNavigate, onScreenContent, className = '' }) => {
   const [messages, setMessages] = useState([]);
@@ -18,15 +26,27 @@ const ChatBot = ({ onNavigate, onScreenContent, className = '' }) => {
   const [isOnline, setIsOnline] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [socket, setSocket] = useState(null);
-  const [botMood, setBotMood] = useState('normal'); // normal, excited, glitchy, bored
-  const [sessionId, setSessionId] = useState(null);
-  const [voiceEnabled, setVoiceEnabled] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [botMood, setBotMood] = useState('normal'); // normal, excited, error, bored
+  const [moodIntensity, setMoodIntensity] = useState(5);
+  const [personalityTraits, setPersonalityTraits] = useState({});
+  const [dynamicQuirks, setDynamicQuirks] = useState([]);
+  const [lastMessageTime, setLastMessageTime] = useState(Date.now());
+  const [userId] = useState(`user_${Math.random().toString(36).substr(2, 9)}`);
+  const [showAudioControls, setShowAudioControls] = useState(false);
+  const [audioSettings, setAudioSettings] = useState({});
+  const { createParticles, glitchText, staticEffect, screenFlicker } = useVisualEffects();
   
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   
+  // Voice recognition hook
+  const { 
+    isSupported: voiceSupported, 
+    isListening, 
+    startListening, 
+    stopListening 
+  } = useVoiceRecognition();
+
   // Initialize socket connection
   useEffect(() => {
     const newSocket = io(SOCKET_URL);
@@ -35,12 +55,23 @@ const ChatBot = ({ onNavigate, onScreenContent, className = '' }) => {
     // Check health on startup
     checkHealth();
     
-    // Check voice support
-    setVoiceEnabled(isVoiceSupported());
+    // Load audio settings
+    setAudioSettings(getAudioSettings());
+    
+    // Setup voice recognition handlers
+    try {
+      setupVoiceRecognition();
+    } catch (error) {
+      console.warn('Voice recognition setup failed:', error);
+    }
     
     // Listen for admin updates
     newSocket.on('admin_update', (data) => {
       console.log('Admin update:', data);
+      if (data.type === 'personality_update') {
+        // Refresh personality context
+        handlePersonalityUpdate(data.personality);
+      }
     });
     
     return () => newSocket.close();
@@ -51,16 +82,19 @@ const ChatBot = ({ onNavigate, onScreenContent, className = '' }) => {
     scrollToBottom();
   }, [messages]);
 
-  // Simulate boredom prompts
+  // Enhanced boredom detection with mood awareness
   useEffect(() => {
     const boredomInterval = setInterval(() => {
-      if (messages.length > 0 && Date.now() - lastMessageTime > 60000) { // 1 minute of inactivity
+      const timeSinceLastMessage = Date.now() - lastMessageTime;
+      const boredomThreshold = botMood === 'bored' ? 30000 : 60000; // More frequent if already bored
+      
+      if (messages.length > 0 && timeSinceLastMessage > boredomThreshold) {
         simulateBoredom();
       }
     }, 30000); // Check every 30 seconds
 
     return () => clearInterval(boredomInterval);
-  }, [messages]);
+  }, [messages, lastMessageTime, botMood]);
 
   const checkHealth = async () => {
     try {
@@ -69,6 +103,11 @@ const ChatBot = ({ onNavigate, onScreenContent, className = '' }) => {
     } catch (error) {
       setIsOnline(false);
     }
+  };
+
+  const setupVoiceRecognition = () => {
+    // Voice recognition is now handled by the useVoiceRecognition hook
+    // The handlers are set up in the handleVoiceInput function
   };
 
   const scrollToBottom = () => {
@@ -80,354 +119,362 @@ const ChatBot = ({ onNavigate, onScreenContent, className = '' }) => {
       "*fidgets with antenna* Hey, wanna see something cool from our recent work?",
       "You know what's pretty wild? Our latest magazine issue. Want to check it out?",
       "*circuits humming* I'm in the mood to show off some of our events...",
-      "Got any questions about what we do at RALPH? I'm feeling chatty! 🤖"
+      "Got any questions about what we do at RALPH? I'm feeling chatty! 🤖",
+      "*taps foot* Anyone want to hear about our latest creative collaborations?"
     ];
     
     const randomMessage = boredomMessages[Math.floor(Math.random() * boredomMessages.length)];
     
     addMessage(randomMessage, 'bot', 'bored');
     setBotMood('bored');
-    playSound('bored');
+    setMoodIntensity(6);
+    playSound('bored', { mood: 'bored' });
+    
+    // Apply visual effects for boredom
+    if (messagesEndRef.current) {
+      const rect = messagesEndRef.current.getBoundingClientRect();
+      staticEffect(messagesEndRef.current, 3000);
+    }
   };
 
-  const addMessage = (text, sender, mood = 'normal') => {
+  const addMessage = (text, sender, mood = 'normal', intensity = 5, traits = {}) => {
     const newMessage = {
       id: Date.now(),
       text,
       sender,
       mood,
+      intensity,
+      traits,
       timestamp: new Date(),
-      effects: applyTextEffects(text, mood)
+      effects: applyTextEffects(text, mood, intensity)
     };
     
     setMessages(prev => [...prev, newMessage]);
+    setLastMessageTime(Date.now());
+    
+    // Trigger sounds based on text content
+    if (sender === 'bot') {
+      triggerSoundsFromText(text, mood);
+    }
     
     // Emit to socket for analytics
     if (socket) {
-      socket.emit('chat_message', { message: text, sender, mood });
+      socket.emit('chat_message', { 
+        message: text, 
+        sender, 
+        mood, 
+        intensity,
+        userId,
+        traits
+      });
     }
   };
 
-  const handleSendMessage = async (message = inputValue) => {
-    if (!message.trim()) return;
+  const handlePersonalityUpdate = (personalityData) => {
+    // Update personality traits and quirks
+    if (personalityData.settings) {
+      setPersonalityTraits(personalityData.settings);
+    }
+    
+    if (personalityData.dynamic_quirks) {
+      setDynamicQuirks(personalityData.dynamic_quirks);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!inputValue.trim() || isTyping) return;
+
+    const userMessage = inputValue.trim();
+    setInputValue('');
     
     // Add user message
-    addMessage(message, 'user');
-    setInputValue('');
-    setIsTyping(true);
+    addMessage(userMessage, 'user');
     
-    // Play typing sound
-    playSound('typing');
+    // Show typing indicator
+    setIsTyping(true);
+    playSound('typing', { volume: 0.3 });
     
     try {
-      // Send to API
-      const response = await sendMessage(message, sessionId);
-      
-      // Store session ID if provided
-      if (response.sessionId && !sessionId) {
-        setSessionId(response.sessionId);
+      // Apply visual effects for thinking
+      if (messagesEndRef.current) {
+        staticEffect(messagesEndRef.current, 2000);
       }
       
-      // Simulate typing delay
-      setTimeout(() => {
-        setIsTyping(false);
-        addMessage(response.response, 'bot', response.mood || 'normal');
+      // Send message to backend
+      const response = await sendMessage(userMessage, userId);
+      
+      // Hide typing indicator
+      setIsTyping(false);
+      
+      if (response.success) {
+        const { message, mood, intensity, traits } = response.data;
         
-        // Update bot mood based on response
-        setBotMood(response.mood || 'normal');
+        // Update bot mood
+        setBotMood(mood);
+        setMoodIntensity(intensity);
         
-        // Play response sound
-        playSound(response.mood === 'error' ? 'error' : 'response');
+        // Add bot response with effects
+        addMessage(message, 'bot', mood, intensity, traits);
         
-        // Speak response if voice output is enabled
-        if (isSpeaking) {
-          speakText(response.response, { 
-            rate: botMood === 'excited' ? 1.1 : 0.9,
-            pitch: botMood === 'excited' ? 1.2 : 1.0
-          });
+        // Apply mood-based visual effects
+        if (mood === 'excited') {
+          createParticles(messagesEndRef.current, 20);
+        } else if (mood === 'error') {
+          screenFlicker(1000);
         }
         
-        // Handle bot actions
-        if (response.actions) {
-          response.actions.forEach(action => handleBotAction(action));
+        // Update personality if provided
+        if (traits) {
+          handlePersonalityUpdate({ settings: traits });
         }
-      }, 1000 + Math.random() * 2000); // Random delay between 1-3 seconds
+        
+        // Trigger voice synthesis if enabled
+        if (audioSettings.voiceEnabled) {
+          queueVoice(message, { mood, intensity });
+        }
+        
+      } else {
+        // Handle error response
+        setBotMood('error');
+        setMoodIntensity(8);
+        addMessage("Oops! Something went wrong with my circuits. Let me try again!", 'bot', 'error', 8);
+        playSound('error', { volume: 0.5 });
+        screenFlicker(1500);
+      }
       
     } catch (error) {
       console.error('Error sending message:', error);
       setIsTyping(false);
-      addMessage("*bzzt* Sorry, my circuits are a bit tangled right now. Try again?", 'bot', 'error');
+      
       setBotMood('error');
-      playSound('error');
+      setMoodIntensity(8);
+      addMessage("My circuits are having a moment! Please try again.", 'bot', 'error', 8);
+      playSound('error', { volume: 0.5 });
+      screenFlicker(1500);
     }
   };
 
-  const handleBotAction = (action) => {
-    switch (action.type) {
-      case 'navigate':
-        if (onNavigate) {
-          onNavigate(action.target);
-        }
-        break;
-      case 'show_content':
-        if (onScreenContent) {
-          onScreenContent(action.content);
-        }
-        break;
-      case 'play_video':
-        // Handle video playback in bot screen
-        break;
-      default:
-        console.log('Unknown action:', action);
-    }
-  };
-
-  const handleInputKeyPress = (e) => {
+  const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
   };
 
-  const handleKeyDown = (e) => {
-    // Voice toggle with Ctrl+V
-    if (e.ctrlKey && e.key === 'v' && voiceEnabled) {
-      e.preventDefault();
-      toggleVoiceListening();
-    }
-    
-    // Voice output toggle with Ctrl+Shift+V
-    if (e.ctrlKey && e.shiftKey && e.key === 'V' && voiceEnabled) {
-      e.preventDefault();
-      toggleVoiceOutput();
-    }
-    
-    // Escape to minimize
-    if (e.key === 'Escape') {
-      setIsMinimized(true);
-    }
-  };
-
-  const handleSuggestionClick = (suggestion) => {
-    handleSendMessage(suggestion);
-  };
-
-  const toggleMinimize = () => {
+  const handleMinimize = () => {
     setIsMinimized(!isMinimized);
-    playSound('toggle');
+    playSound('click', { volume: 0.3 });
   };
 
-  const handleVoiceInput = (transcript) => {
-    setInputValue(transcript);
-    setIsListening(false);
-    handleSendMessage(transcript);
-  };
-
-  const toggleVoiceListening = () => {
+  const handleVoiceInput = () => {
     if (isListening) {
-      stopVoiceRecognition();
-      setIsListening(false);
+      stopListening();
     } else {
-      const success = startVoiceRecognition(handleVoiceInput);
-      if (success) {
-        setIsListening(true);
-        playSound('beep');
+      startListening(
+        (transcript) => {
+          setInputValue(transcript);
+          handleSendMessage(transcript);
+        },
+        (error) => {
+          console.error('Voice recognition error:', error);
+          addMessage("*static* Sorry, I couldn't quite catch that. Try typing instead?", 'bot', 'error');
+        }
+      );
+    }
+  };
+
+  const handleVoiceOutput = () => {
+    if (messages.length > 0) {
+      const lastBotMessage = messages.filter(m => m.sender === 'bot').pop();
+      if (lastBotMessage) {
+        // Voice output implementation would go here
+        console.log('Voice output not implemented yet');
+        playSound('voice', { volume: 0.4 });
       }
     }
   };
 
-  const toggleVoiceOutput = () => {
-    setIsSpeaking(!isSpeaking);
-    if (isSpeaking) {
-      stopSpeaking();
-    }
+  const handleAudioControls = () => {
+    setShowAudioControls(!showAudioControls);
+    playSound('click', { volume: 0.3 });
   };
 
-  const lastMessageTime = messages.length > 0 ? messages[messages.length - 1].timestamp.getTime() : Date.now();
+  const handleSuggestionClick = (suggestion) => {
+    setInputValue(suggestion);
+    inputRef.current?.focus();
+    playSound('click', { volume: 0.3 });
+  };
+
+  const getTypingIndicator = () => {
+    const baseText = "*whirrs thoughtfully*";
+    const moodVariants = {
+      excited: "*circuits buzzing excitedly*",
+      error: "*static crackle* Processing...",
+      bored: "*fidgets* Thinking...",
+      normal: "*whirrs thoughtfully*"
+    };
+    
+    return moodVariants[botMood] || baseText;
+  };
+
+  const getMoodAnimation = () => {
+    const animations = {
+      excited: {
+        scale: [1, 1.05, 1],
+        rotate: [0, 2, -2, 0],
+        transition: { duration: 0.5, repeat: Infinity }
+      },
+      error: {
+        x: [0, -3, 3, -3, 0],
+        transition: { duration: 0.3, repeat: 3 }
+      },
+      bored: {
+        opacity: [1, 0.7, 1],
+        transition: { duration: 2, repeat: Infinity }
+      },
+      normal: {}
+    };
+    
+    return animations[botMood] || {};
+  };
 
   return (
-    <motion.div 
-      className={`ralphbot-container ${className} ${isMinimized ? 'minimized' : ''} mood-${botMood}`}
-      initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.5 }}
-      role="dialog"
-      aria-label="RALPHBOT Chat Interface"
-      aria-describedby="ralphbot-description"
-      onKeyDown={handleKeyDown}
-      tabIndex={0}
-    >
-      <div id="ralphbot-description" className="sr-only">
-        RALPHBOT is a space-themed AI assistant for RALPH creative agency. 
-        You can type messages or use voice commands to interact with the bot.
-      </div>
-      {/* Bot Header */}
-      <motion.div 
-        className="ralphbot-header"
-        whileHover={{ scale: 1.02 }}
-      >
-        <div className="bot-status">
-          <div className={`status-indicator ${isOnline ? 'online' : 'offline'}`} />
-          <span className="bot-name">RALPHBOT</span>
-          <span className="bot-version">v1.0.0</span>
-        </div>
-        <button 
-          className="minimize-button" 
-          onClick={toggleMinimize}
-          aria-label={isMinimized ? "Expand chat" : "Minimize chat"}
-        >
-          {isMinimized ? '⬆' : '⬇'}
-        </button>
-      </motion.div>
-
-      {/* Bot Screen - shows content/videos */}
+    <div className={`chatbot-container ${className} ${isMinimized ? 'minimized' : ''}`}>
+      {/* Bot Screen */}
       <BotScreen 
         mood={botMood}
+        intensity={moodIntensity}
         isVisible={!isMinimized}
         onContentChange={onScreenContent}
+        personalityTraits={personalityTraits}
+        dynamicQuirks={dynamicQuirks}
       />
+      
+      {/* Chat Interface */}
+      <div className="chat-interface">
+        {/* Header */}
+        <div className="chat-header">
+          <div className="bot-status">
+            <div className={`status-indicator ${isOnline ? 'online' : 'offline'}`}></div>
+            <span className="bot-name">RALPHBOT</span>
+            <span className="mood-indicator">
+              {botMood === 'excited' && '⚡'}
+              {botMood === 'error' && '⚠️'}
+              {botMood === 'bored' && '😴'}
+              {botMood === 'normal' && '🤖'}
+            </span>
+          </div>
+          <div className="header-controls">
+            <button 
+              className={`control-btn voice-btn ${isListening ? 'listening' : ''}`}
+              onClick={handleVoiceInput}
+              aria-label={isListening ? 'Stop voice input' : 'Start voice input'}
+              disabled={!voiceSupported}
+            >
+              {isListening ? '🔴' : '🎤'}
+            </button>
+            <button 
+              className="control-btn voice-btn"
+              onClick={handleVoiceOutput}
+              aria-label="Voice output"
+            >
+              🔊
+            </button>
+            <button 
+              className="control-btn audio-btn"
+              onClick={handleAudioControls}
+              aria-label="Audio settings"
+            >
+              🎵
+            </button>
+            <button 
+              className="control-btn minimize-btn"
+              onClick={handleMinimize}
+              aria-label={isMinimized ? 'Expand chat' : 'Minimize chat'}
+            >
+              {isMinimized ? '🔽' : '🔼'}
+            </button>
+          </div>
+        </div>
 
-      {/* Chat Messages */}
-      <AnimatePresence>
-        {!isMinimized && (
-          <motion.div 
-            className="ralphbot-messages"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            {messages.length === 0 && (
-              <motion.div 
-                className="welcome-message"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
+        {/* Messages */}
+        <div className="messages-container">
+          {messages.map((message) => (
+            <MessageBubble 
+              key={message.id} 
+              message={message}
+            />
+          ))}
+          
+          {isTyping && (
+            <div className="typing-indicator">
+              <div className="typing-text">{getTypingIndicator()}</div>
+              <div className="typing-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+          )}
+          
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input Area */}
+        <div className="input-area">
+          <div className="input-container">
+            <textarea
+              ref={inputRef}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Ask me about RALPH's creative work, events, magazine, or collaborations..."
+              className="message-input"
+              rows="1"
+              disabled={isTyping}
+            />
+            <button 
+              className="send-btn"
+              onClick={handleSendMessage}
+              disabled={!inputValue.trim() || isTyping}
+              aria-label="Send message"
+            >
+              🚀
+            </button>
+          </div>
+          
+          {/* Quick Suggestions */}
+          {messages.length === 0 && (
+            <div className="quick-suggestions">
+              <button 
+                className="suggestion-btn"
+                onClick={() => handleSuggestionClick("Tell me about RALPH's creative work")}
               >
-                <div className="bot-avatar">🤖</div>
-                <MessageBubble 
-                  message={{
-                    text: "*beep boop* Hey there! I'm RALPHBOT, your digital guide to the RALPH universe. Ask me anything about our work, events, magazine, or just say hi! 🚀",
-                    sender: 'bot',
-                    mood: 'normal'
-                  }}
-                />
-              </motion.div>
-            )}
-
-            {messages.map((message, index) => (
-              <motion.div
-                key={message.id}
-                initial={{ opacity: 0, x: message.sender === 'user' ? 50 : -50 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
-                role="article"
-                aria-label={`${message.sender === 'user' ? 'You' : 'RALPHBOT'} message`}
+                Creative Work
+              </button>
+              <button 
+                className="suggestion-btn"
+                onClick={() => handleSuggestionClick("What events do you have coming up?")}
               >
-                <MessageBubble message={message} />
-              </motion.div>
-            ))}
-
-            {isTyping && (
-              <motion.div
-                className="typing-indicator"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                role="status"
-                aria-live="polite"
-                aria-label="RALPHBOT is typing"
+                Events
+              </button>
+              <button 
+                className="suggestion-btn"
+                onClick={() => handleSuggestionClick("Tell me about your magazine")}
               >
-                <div className="bot-avatar">🤖</div>
-                <div className="typing-dots">
-                  <span></span>
-                  <span></span>
-                  <span></span>
-                </div>
-              </motion.div>
-            )}
-
-            <div ref={messagesEndRef} />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Input Area */}
-      <AnimatePresence>
-        {!isMinimized && (
-          <motion.div 
-            className="ralphbot-input-area"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            transition={{ duration: 0.3 }}
-          >
-            <div className="input-container">
-              <textarea
-                ref={inputRef}
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyPress={handleInputKeyPress}
-                placeholder="Ask RALPHBOT anything..."
-                className="message-input"
-                rows="1"
-                disabled={isTyping}
-                aria-label="Message input"
-              />
-              
-              {/* Voice Controls */}
-              {voiceEnabled && (
-                <div className="voice-controls">
-                  <button
-                    onClick={toggleVoiceListening}
-                    className={`voice-button ${isListening ? 'listening' : ''}`}
-                    aria-label={isListening ? "Stop voice input" : "Start voice input"}
-                    disabled={isTyping}
-                  >
-                    <span>{isListening ? '🔴' : '🎤'}</span>
-                  </button>
-                  <button
-                    onClick={toggleVoiceOutput}
-                    className={`voice-button ${isSpeaking ? 'speaking' : ''}`}
-                    aria-label={isSpeaking ? "Disable voice output" : "Enable voice output"}
-                  >
-                    <span>{isSpeaking ? '🔊' : '🔇'}</span>
-                  </button>
-                </div>
-              )}
-              
-              <button
-                onClick={() => handleSendMessage()}
-                disabled={!inputValue.trim() || isTyping}
-                className="send-button"
-                aria-label="Send message"
-              >
-                <span>🚀</span>
+                Magazine
               </button>
             </div>
+          )}
+        </div>
+      </div>
 
-            {/* Quick Suggestions */}
-            {messages.length > 0 && (
-              <motion.div 
-                className="suggestions"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-              >
-                <button onClick={() => handleSuggestionClick("Tell me about RALPH")}>
-                  About RALPH
-                </button>
-                <button onClick={() => handleSuggestionClick("Show me your latest work")}>
-                  Latest Work
-                </button>
-                <button onClick={() => handleSuggestionClick("What events do you have?")}>
-                  Events
-                </button>
-              </motion.div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+      {/* Audio Controls */}
+      <AudioControls 
+        isVisible={showAudioControls}
+        onClose={() => setShowAudioControls(false)}
+      />
+    </div>
   );
 };
 

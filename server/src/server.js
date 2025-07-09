@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
@@ -9,6 +8,8 @@ import winston from 'winston';
 import compression from 'compression';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
+import { existsSync } from 'fs';
 
 // Import routes
 import chatRoutes from './routes/chat.js';
@@ -18,6 +19,7 @@ import adminRoutes from './routes/admin.js';
 import { initializePersonality } from './services/personality.js';
 import { logInteraction } from './services/analytics.js';
 
+import dotenv from 'dotenv';
 dotenv.config();
 
 const app = express();
@@ -60,24 +62,75 @@ app.use(limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/ralphbot', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => {
-  logger.info('Connected to MongoDB');
-})
-.catch((error) => {
-  logger.error('MongoDB connection error:', error);
-});
+// Connect to MongoDB (optional for development)
+if (process.env.MONGODB_URI) {
+  mongoose.connect(process.env.MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => {
+    logger.info('Connected to MongoDB');
+  })
+  .catch((error) => {
+    logger.error('MongoDB connection error:', error);
+    logger.warn('Continuing without MongoDB - some features may be limited');
+  });
+} else {
+  logger.warn('No MongoDB URI provided - running in development mode without database');
+}
 
 // Initialize personality system
 initializePersonality();
 
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'online',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0',
+    service: 'RALPHBOT Server'
+  });
+});
+
+// API health check (for frontend proxy)
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'online',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0',
+    service: 'RALPHBOT Server'
+  });
+});
+
 // Routes
 app.use('/api/chat', chatRoutes);
 app.use('/api/admin', adminRoutes);
+
+// Serve admin dashboard static files (only if they exist)
+const adminPath = path.join(process.cwd(), 'public', 'admin');
+const adminIndexPath = path.join(adminPath, 'index.html');
+
+// Check if admin files exist before serving
+if (existsSync(adminIndexPath)) {
+  app.use('/admin', express.static(adminPath));
+  app.get('/admin/*', (req, res) => {
+    res.sendFile(adminIndexPath);
+  });
+} else {
+  // Admin dashboard not built yet - serve a placeholder
+  app.get('/admin', (req, res) => {
+    res.json({
+      message: 'Admin dashboard not built yet',
+      instructions: 'Run "npm run admin:build" to build the admin dashboard'
+    });
+  });
+  app.get('/admin/*', (req, res) => {
+    res.json({
+      message: 'Admin dashboard not built yet',
+      instructions: 'Run "npm run admin:build" to build the admin dashboard'
+    });
+  });
+}
 
 // Global error handling middleware
 app.use((err, req, res, next) => {
@@ -89,22 +142,20 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler
+// 404 handler - only for non-API routes
 app.use('*', (req, res) => {
-  res.status(404).json({
-    error: 'Route not found',
-    message: `The route ${req.originalUrl} does not exist`
-  });
-});
-
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'online',
-    timestamp: new Date().toISOString(),
-    version: '1.0.0',
-    service: 'RALPHBOT Server'
-  });
+  // Don't return JSON for non-API routes that might be frontend routes
+  if (req.originalUrl.startsWith('/api/')) {
+    res.status(404).json({
+      error: 'API route not found',
+      message: `The API route ${req.originalUrl} does not exist`
+    });
+  } else {
+    res.status(404).json({
+      error: 'Route not found',
+      message: `The route ${req.originalUrl} does not exist`
+    });
+  }
 });
 
 // Socket.io for real-time features

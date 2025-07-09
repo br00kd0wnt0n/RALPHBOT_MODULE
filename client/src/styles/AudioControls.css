@@ -1,0 +1,343 @@
+/* Audio Controls Styles */
+.audio-controls-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.audio-controls-panel {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  border: 2px solid #00ffff;
+  border-radius: 15px;
+  padding: 20px;
+  width: 90%;
+  max-width: 400px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 40px rgba(0, 255, 255, 0.3);
+  animation: slideUp 0.3s ease-out;
+}
+
+.audio-controls-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid rgba(0, 255, 255, 0.3);
+}
+
+.audio-controls-header h3 {
+  color: #00ffff;
+  margin: 0;
+  font-size: 18px;
+  font-weight: bold;
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: #00ffff;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-btn:hover {
+  background: rgba(0, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+.audio-controls-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Volume Controls */
+.volume-control {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.volume-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.mute-btn, .toggle-btn {
+  background: none;
+  border: 1px solid rgba(0, 255, 255, 0.5);
+  color: #00ffff;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 12px;
+  min-width: 30px;
+}
+
+.mute-btn:hover, .toggle-btn:hover {
+  background: rgba(0, 255, 255, 0.2);
+  border-color: #00ffff;
+  transform: scale(1.05);
+}
+
+.toggle-btn.active {
+  background: rgba(0, 255, 255, 0.3);
+  border-color: #00ffff;
+}
+
+/* Volume Slider */
+.volume-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+  position: relative;
+}
+
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: linear-gradient(135deg, #00ffff, #0080ff);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+  transition: all 0.3s ease;
+}
+
+.volume-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 15px rgba(0, 255, 255, 0.8);
+}
+
+.volume-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  background: linear-gradient(135deg, #00ffff, #0080ff);
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+  transition: all 0.3s ease;
+}
+
+.volume-slider::-moz-range-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 15px rgba(0, 255, 255, 0.8);
+}
+
+.volume-slider:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.volume-slider:disabled::-webkit-slider-thumb {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.volume-value {
+  color: #00ffff;
+  font-size: 12px;
+  font-weight: bold;
+  text-align: right;
+  text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+}
+
+/* Audio Features */
+.audio-features {
+  padding: 15px;
+  background: rgba(0, 255, 255, 0.05);
+  border-radius: 10px;
+  border: 1px solid rgba(0, 255, 255, 0.2);
+}
+
+.feature-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Audio Presets */
+.audio-presets {
+  padding: 15px;
+  background: rgba(0, 255, 255, 0.05);
+  border-radius: 10px;
+  border: 1px solid rgba(0, 255, 255, 0.2);
+}
+
+.audio-presets h4 {
+  color: #00ffff;
+  margin: 0 0 15px 0;
+  font-size: 16px;
+  font-weight: bold;
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+}
+
+.preset-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.preset-btn {
+  background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(0, 128, 255, 0.1));
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  color: #00ffff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 12px;
+  font-weight: 500;
+  flex: 1;
+  min-width: 80px;
+}
+
+.preset-btn:hover {
+  background: linear-gradient(135deg, rgba(0, 255, 255, 0.2), rgba(0, 128, 255, 0.2));
+  border-color: #00ffff;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 255, 255, 0.3);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+  .audio-controls-panel {
+    width: 95%;
+    padding: 15px;
+  }
+  
+  .audio-controls-header h3 {
+    font-size: 16px;
+  }
+  
+  .volume-label {
+    font-size: 13px;
+  }
+  
+  .preset-buttons {
+    flex-direction: column;
+  }
+  
+  .preset-btn {
+    min-width: auto;
+  }
+}
+
+/* Scrollbar Styling */
+.audio-controls-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.audio-controls-panel::-webkit-scrollbar-track {
+  background: rgba(0, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.audio-controls-panel::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #00ffff, #0080ff);
+  border-radius: 3px;
+}
+
+.audio-controls-panel::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #00ffff, #0066cc);
+}
+
+/* Focus States for Accessibility */
+.volume-slider:focus,
+.mute-btn:focus,
+.toggle-btn:focus,
+.preset-btn:focus,
+.close-btn:focus {
+  outline: 2px solid #00ffff;
+  outline-offset: 2px;
+}
+
+/* Loading State */
+.volume-slider:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  .audio-controls-panel {
+    border-width: 3px;
+  }
+  
+  .volume-slider::-webkit-slider-thumb {
+    border: 2px solid #ffffff;
+  }
+  
+  .mute-btn, .toggle-btn, .preset-btn {
+    border-width: 2px;
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  .audio-controls-overlay,
+  .audio-controls-panel,
+  .mute-btn,
+  .toggle-btn,
+  .preset-btn,
+  .volume-slider::-webkit-slider-thumb,
+  .volume-slider::-moz-range-thumb {
+    animation: none;
+    transition: none;
+  }
+} 

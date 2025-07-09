@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import ChatBot from './components/ChatBot';
 import BotScreen from './components/BotScreen';
+import { VisualEffectsProvider } from './components/VisualEffects';
+import ErrorBoundary from './components/ErrorBoundary';
 import { motion } from 'framer-motion';
 import './styles/App.css';
+import './styles/visualEffects.css';
 
 function App() {
   const [currentScreen, setCurrentScreen] = useState('welcome');
@@ -60,19 +63,23 @@ function App() {
 
       {/* ChatBot component */}
       {isBotVisible && (
-        <motion.div
-          initial={{ opacity: 0, x: 300 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: 300 }}
-          transition={{ duration: 0.5 }}
-          className="chatbot-container"
-        >
-          <ChatBot
-            onNavigate={handleNavigate}
-            onScreenContent={handleScreenContent}
-            className="ralphbot-widget"
-          />
-        </motion.div>
+        <ErrorBoundary>
+          <VisualEffectsProvider>
+            <motion.div
+              initial={{ opacity: 0, x: 300 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 300 }}
+              transition={{ duration: 0.5 }}
+              className="chatbot-container"
+            >
+              <ChatBot
+                onNavigate={handleNavigate}
+                onScreenContent={handleScreenContent}
+                className="ralphbot-widget"
+              />
+            </motion.div>
+          </VisualEffectsProvider>
+        </ErrorBoundary>
       )}
     </div>
   );

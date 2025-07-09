@@ -1,3 +1,5 @@
+// RALPHBOT Main Entry Point
+// Cache bust: v1.0.1 - Fixed voice recognition service
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
