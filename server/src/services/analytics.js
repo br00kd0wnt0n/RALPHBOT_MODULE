@@ -308,4 +308,20 @@ export const getActiveSessions = () => {
   return analyticsService.getActiveSessions();
 };
 
+// Get recent conversations for admin
+export const getRecentConversations = async (limit = 50, offset = 0) => {
+  try {
+    const conversations = await Conversation.find()
+      .sort({ updatedAt: -1 })
+      .limit(limit)
+      .skip(offset)
+      .select('sessionId analytics createdAt updatedAt');
+    
+    return conversations;
+  } catch (error) {
+    logger.error('Error getting recent conversations:', error);
+    throw error;
+  }
+};
+
 export default analyticsService; 

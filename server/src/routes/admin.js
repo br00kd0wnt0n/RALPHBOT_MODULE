@@ -10,11 +10,26 @@ import {
   getActiveSessions, 
   getConversationHistory 
 } from '../services/analytics.js';
+import { 
+  validatePersonalityUpdate, 
+  validateAnalyticsQuery, 
+  validateQuirk,
+  sanitizeInput 
+} from '../middleware/validation.js';
+import { 
+  authenticateAdmin, 
+  adminRateLimit, 
+  limitRequestSize,
+  logAuthAttempt 
+} from '../middleware/auth.js';
 
 const router = express.Router();
 
 // Get personality configuration
-router.get('/personality', async (req, res) => {
+router.get('/personality', 
+  logAuthAttempt,
+  authenticateAdmin,
+  async (req, res) => {
   try {
     const personality = await getPersonalityContext();
     res.json(personality);
@@ -27,7 +42,14 @@ router.get('/personality', async (req, res) => {
 });
 
 // Update personality configuration
-router.put('/personality', async (req, res) => {
+router.put('/personality', 
+  logAuthAttempt,
+  authenticateAdmin,
+  adminRateLimit,
+  limitRequestSize(1024 * 50), // 50KB limit
+  sanitizeInput,
+  validatePersonalityUpdate,
+  async (req, res) => {
   try {
     const updates = req.body;
     const personality = await updatePersonality(updates);
@@ -41,7 +63,13 @@ router.put('/personality', async (req, res) => {
 });
 
 // Add new quirk
-router.post('/personality/quirks', async (req, res) => {
+router.post('/personality/quirks', 
+  logAuthAttempt,
+  authenticateAdmin,
+  adminRateLimit,
+  sanitizeInput,
+  validateQuirk,
+  async (req, res) => {
   try {
     const { trigger, response } = req.body;
     
@@ -62,7 +90,13 @@ router.post('/personality/quirks', async (req, res) => {
 });
 
 // Remove quirk
-router.delete('/personality/quirks', async (req, res) => {
+router.delete('/personality/quirks', 
+  logAuthAttempt,
+  authenticateAdmin,
+  adminRateLimit,
+  sanitizeInput,
+  validateQuirk,
+  async (req, res) => {
   try {
     const { trigger, response } = req.body;
     
@@ -83,7 +117,11 @@ router.delete('/personality/quirks', async (req, res) => {
 });
 
 // Get analytics
-router.get('/analytics', async (req, res) => {
+router.get('/analytics', 
+  logAuthAttempt,
+  authenticateAdmin,
+  validateAnalyticsQuery,
+  async (req, res) => {
   try {
     const { timeRange = '24h' } = req.query;
     const analytics = await getAnalytics(timeRange);
@@ -97,7 +135,10 @@ router.get('/analytics', async (req, res) => {
 });
 
 // Get active sessions
-router.get('/sessions', async (req, res) => {
+router.get('/sessions', 
+  logAuthAttempt,
+  authenticateAdmin,
+  async (req, res) => {
   try {
     const sessions = getActiveSessions();
     res.json(sessions);
@@ -110,7 +151,11 @@ router.get('/sessions', async (req, res) => {
 });
 
 // Get conversation by session ID
-router.get('/conversations/:sessionId', async (req, res) => {
+router.get('/conversations/:sessionId', 
+  logAuthAttempt,
+  authenticateAdmin,
+  validateSessionId,
+  async (req, res) => {
   try {
     const { sessionId } = req.params;
     const conversation = await getConversationHistory(sessionId);
@@ -131,7 +176,10 @@ router.get('/conversations/:sessionId', async (req, res) => {
 });
 
 // Get system health
-router.get('/health', async (req, res) => {
+router.get('/health', 
+  logAuthAttempt,
+  authenticateAdmin,
+  async (req, res) => {
   try {
     const health = {
       status: 'healthy',

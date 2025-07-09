@@ -2,6 +2,17 @@ import express from 'express';
 import claudeService from '../services/claude.js';
 import { logConversation, trackSession, endSession } from '../services/analytics.js';
 import { getRandomQuirk } from '../services/personality.js';
+import { 
+  validateChatMessage, 
+  validateSessionId, 
+  sanitizeInput 
+} from '../middleware/validation.js';
+import { 
+  authenticateApiKey, 
+  chatRateLimit, 
+  limitRequestSize,
+  logAuthAttempt 
+} from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -11,7 +22,13 @@ const generateSessionId = () => {
 };
 
 // Send message to bot
-router.post('/message', async (req, res) => {
+router.post('/message', 
+  logAuthAttempt,
+  limitRequestSize(1024 * 10), // 10KB limit
+  chatRateLimit,
+  sanitizeInput,
+  validateChatMessage,
+  async (req, res) => {
   try {
     const { message, sessionId, context = {} } = req.body;
     
@@ -59,8 +76,11 @@ router.post('/message', async (req, res) => {
   }
 });
 
-// Get conversation history
-router.get('/history/:sessionId', async (req, res) => {
+// Get conversation history by session ID
+router.get('/history/:sessionId', 
+  logAuthAttempt,
+  validateSessionId,
+  async (req, res) => {
   try {
     const { sessionId } = req.params;
     const { getConversationHistory } = await import('../services/analytics.js');
@@ -86,8 +106,40 @@ router.get('/history/:sessionId', async (req, res) => {
   }
 });
 
+// Get all conversation history (for admin purposes)
+router.get('/history', 
+  logAuthAttempt,
+  authenticateApiKey,
+  async (req, res) => {
+    try {
+      const { limit = 50, offset = 0 } = req.query;
+      const { getRecentConversations } = await import('../services/analytics.js');
+      
+      const conversations = await getRecentConversations(parseInt(limit), parseInt(offset));
+      
+      res.json({
+        conversations,
+        pagination: {
+          limit: parseInt(limit),
+          offset: parseInt(offset),
+          total: conversations.length
+        }
+      });
+
+    } catch (error) {
+      console.error('Get all history error:', error);
+      res.status(500).json({
+        error: 'Internal server error'
+      });
+    }
+  }
+);
+
 // Clear conversation
-router.delete('/history/:sessionId', async (req, res) => {
+router.delete('/history/:sessionId', 
+  logAuthAttempt,
+  validateSessionId,
+  async (req, res) => {
   try {
     const { sessionId } = req.params;
     
