@@ -182,6 +182,52 @@
   display: flex;
   gap: 8px;
   margin-bottom: 12px;
+  align-items: center;
+}
+
+.voice-controls {
+  display: flex;
+  gap: 4px;
+  margin-right: 8px;
+}
+
+.voice-button {
+  background: rgba(0, 255, 255, 0.2);
+  border: 1px solid rgba(0, 255, 255, 0.4);
+  border-radius: 6px;
+  padding: 8px;
+  color: #ffffff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.voice-button:hover:not(:disabled) {
+  background: rgba(0, 255, 255, 0.3);
+  border-color: rgba(0, 255, 255, 0.6);
+  transform: scale(1.05);
+}
+
+.voice-button.listening {
+  background: rgba(255, 68, 68, 0.3);
+  border-color: rgba(255, 68, 68, 0.6);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+.voice-button.speaking {
+  background: rgba(0, 255, 0, 0.3);
+  border-color: rgba(0, 255, 0, 0.6);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.voice-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .message-input {
@@ -257,6 +303,51 @@
   background: rgba(0, 255, 255, 0.2);
   border-color: #00ffff;
   transform: translateY(-2px);
+}
+
+/* Screen Reader Only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Focus Management */
+.ralphbot-container:focus-within {
+  outline: 2px solid #00ffff;
+  outline-offset: 2px;
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  .ralphbot-container {
+    border-width: 3px;
+  }
+  
+  .message-input {
+    border-width: 2px;
+  }
+  
+  .voice-button {
+    border-width: 2px;
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  .ralphbot-container,
+  .message-bubble,
+  .typing-dots,
+  .voice-button {
+    animation: none;
+    transition: none;
+  }
 }
 
 /* Responsive Design */

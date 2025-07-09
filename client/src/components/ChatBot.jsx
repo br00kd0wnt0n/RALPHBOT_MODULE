@@ -5,6 +5,7 @@ import BotScreen from './BotScreen';
 import { sendMessage, getHealth } from '../services/api';
 import { playSound } from '../services/audio';
 import { applyTextEffects } from '../utils/effects';
+import { startVoiceRecognition, stopVoiceRecognition, speakText, stopSpeaking, isVoiceSupported, getVoiceStatus } from '../services/voice';
 import { motion, AnimatePresence } from 'framer-motion';
 import '../styles/ChatBot.css';
 
@@ -19,6 +20,9 @@ const ChatBot = ({ onNavigate, onScreenContent, className = '' }) => {
   const [socket, setSocket] = useState(null);
   const [botMood, setBotMood] = useState('normal'); // normal, excited, glitchy, bored
   const [sessionId, setSessionId] = useState(null);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -30,6 +34,9 @@ const ChatBot = ({ onNavigate, onScreenContent, className = '' }) => {
     
     // Check health on startup
     checkHealth();
+    
+    // Check voice support
+    setVoiceEnabled(isVoiceSupported());
     
     // Listen for admin updates
     newSocket.on('admin_update', (data) => {
@@ -132,6 +139,14 @@ const ChatBot = ({ onNavigate, onScreenContent, className = '' }) => {
         // Play response sound
         playSound(response.mood === 'error' ? 'error' : 'response');
         
+        // Speak response if voice output is enabled
+        if (isSpeaking) {
+          speakText(response.response, { 
+            rate: botMood === 'excited' ? 1.1 : 0.9,
+            pitch: botMood === 'excited' ? 1.2 : 1.0
+          });
+        }
+        
         // Handle bot actions
         if (response.actions) {
           response.actions.forEach(action => handleBotAction(action));
@@ -174,6 +189,25 @@ const ChatBot = ({ onNavigate, onScreenContent, className = '' }) => {
     }
   };
 
+  const handleKeyDown = (e) => {
+    // Voice toggle with Ctrl+V
+    if (e.ctrlKey && e.key === 'v' && voiceEnabled) {
+      e.preventDefault();
+      toggleVoiceListening();
+    }
+    
+    // Voice output toggle with Ctrl+Shift+V
+    if (e.ctrlKey && e.shiftKey && e.key === 'V' && voiceEnabled) {
+      e.preventDefault();
+      toggleVoiceOutput();
+    }
+    
+    // Escape to minimize
+    if (e.key === 'Escape') {
+      setIsMinimized(true);
+    }
+  };
+
   const handleSuggestionClick = (suggestion) => {
     handleSendMessage(suggestion);
   };
@@ -181,6 +215,32 @@ const ChatBot = ({ onNavigate, onScreenContent, className = '' }) => {
   const toggleMinimize = () => {
     setIsMinimized(!isMinimized);
     playSound('toggle');
+  };
+
+  const handleVoiceInput = (transcript) => {
+    setInputValue(transcript);
+    setIsListening(false);
+    handleSendMessage(transcript);
+  };
+
+  const toggleVoiceListening = () => {
+    if (isListening) {
+      stopVoiceRecognition();
+      setIsListening(false);
+    } else {
+      const success = startVoiceRecognition(handleVoiceInput);
+      if (success) {
+        setIsListening(true);
+        playSound('beep');
+      }
+    }
+  };
+
+  const toggleVoiceOutput = () => {
+    setIsSpeaking(!isSpeaking);
+    if (isSpeaking) {
+      stopSpeaking();
+    }
   };
 
   const lastMessageTime = messages.length > 0 ? messages[messages.length - 1].timestamp.getTime() : Date.now();
@@ -191,7 +251,16 @@ const ChatBot = ({ onNavigate, onScreenContent, className = '' }) => {
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.5 }}
+      role="dialog"
+      aria-label="RALPHBOT Chat Interface"
+      aria-describedby="ralphbot-description"
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
     >
+      <div id="ralphbot-description" className="sr-only">
+        RALPHBOT is a space-themed AI assistant for RALPH creative agency. 
+        You can type messages or use voice commands to interact with the bot.
+      </div>
       {/* Bot Header */}
       <motion.div 
         className="ralphbot-header"
@@ -252,6 +321,8 @@ const ChatBot = ({ onNavigate, onScreenContent, className = '' }) => {
                 initial={{ opacity: 0, x: message.sender === 'user' ? 50 : -50 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
+                role="article"
+                aria-label={`${message.sender === 'user' ? 'You' : 'RALPHBOT'} message`}
               >
                 <MessageBubble message={message} />
               </motion.div>
@@ -262,6 +333,9 @@ const ChatBot = ({ onNavigate, onScreenContent, className = '' }) => {
                 className="typing-indicator"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
+                role="status"
+                aria-live="polite"
+                aria-label="RALPHBOT is typing"
               >
                 <div className="bot-avatar">🤖</div>
                 <div className="typing-dots">
@@ -297,7 +371,30 @@ const ChatBot = ({ onNavigate, onScreenContent, className = '' }) => {
                 className="message-input"
                 rows="1"
                 disabled={isTyping}
+                aria-label="Message input"
               />
+              
+              {/* Voice Controls */}
+              {voiceEnabled && (
+                <div className="voice-controls">
+                  <button
+                    onClick={toggleVoiceListening}
+                    className={`voice-button ${isListening ? 'listening' : ''}`}
+                    aria-label={isListening ? "Stop voice input" : "Start voice input"}
+                    disabled={isTyping}
+                  >
+                    <span>{isListening ? '🔴' : '🎤'}</span>
+                  </button>
+                  <button
+                    onClick={toggleVoiceOutput}
+                    className={`voice-button ${isSpeaking ? 'speaking' : ''}`}
+                    aria-label={isSpeaking ? "Disable voice output" : "Enable voice output"}
+                  >
+                    <span>{isSpeaking ? '🔊' : '🔇'}</span>
+                  </button>
+                </div>
+              )}
+              
               <button
                 onClick={() => handleSendMessage()}
                 disabled={!inputValue.trim() || isTyping}
