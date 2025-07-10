@@ -11,7 +11,7 @@ import {
 import winston from 'winston';
 
 const anthropic = new Anthropic({
-  apiKey: process.env.CLAUDE_API_KEY,
+  apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 const logger = winston.createLogger({

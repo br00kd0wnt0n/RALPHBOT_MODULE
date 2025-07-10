@@ -142,19 +142,34 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler - only for non-API routes
+// 404 handler - handle API routes and non-API routes separately
 app.use('*', (req, res) => {
-  // Don't return JSON for non-API routes that might be frontend routes
+  // For API routes, return JSON 404
   if (req.originalUrl.startsWith('/api/')) {
     res.status(404).json({
       error: 'API route not found',
       message: `The API route ${req.originalUrl} does not exist`
     });
   } else {
-    res.status(404).json({
-      error: 'Route not found',
-      message: `The route ${req.originalUrl} does not exist`
-    });
+    // For non-API routes, return a simple 404 page
+    res.status(404).send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>404 - Page Not Found</title>
+          <style>
+            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+            h1 { color: #333; }
+            p { color: #666; }
+          </style>
+        </head>
+        <body>
+          <h1>404 - Page Not Found</h1>
+          <p>The page you're looking for doesn't exist.</p>
+          <p><a href="/admin">Go to Admin Dashboard</a> | <a href="/health">Health Check</a></p>
+        </body>
+      </html>
+    `);
   }
 });
 

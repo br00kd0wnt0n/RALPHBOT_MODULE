@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import MessageBubble from './MessageBubble';
-import BotScreen from './BotScreen';
 import AudioControls from './AudioControls';
 import { VisualEffectsProvider, useVisualEffects } from './VisualEffects';
 import { sendMessage, getHealth } from '../services/api';
@@ -17,6 +16,16 @@ import { applyTextEffects } from '../utils/effects';
 import './ChatBot.css';
 import { useVoiceRecognition } from '../services/voiceRecognition';
 
+/**
+ * RALPHBOT ChatBot Component
+ * 
+ * IMPORTANT: This component contains the main chatbot-container div.
+ * The App.jsx wrapper should NOT have the same class to avoid box-within-box layout issues.
+ * 
+ * Container Structure:
+ * - App.jsx: motion.div (animation wrapper, NO chatbot-container class)
+ * - ChatBot.jsx: div with className="chatbot-container" (main container)
+ */
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001';
 
 const ChatBot = ({ onNavigate, onScreenContent, className = '' }) => {
@@ -287,10 +296,30 @@ const ChatBot = ({ onNavigate, onScreenContent, className = '' }) => {
     if (messages.length > 0) {
       const lastBotMessage = messages.filter(m => m.sender === 'bot').pop();
       if (lastBotMessage) {
-        // Voice output implementation would go here
-        console.log('Voice output not implemented yet');
-        playSound('voice', { volume: 0.4 });
+        // Use browser's speech synthesis to speak the message
+        if ('speechSynthesis' in window) {
+          const utterance = new SpeechSynthesisUtterance(lastBotMessage.text);
+          utterance.rate = 0.9; // Slightly slower for robot-like speech
+          utterance.pitch = 0.8; // Lower pitch for robot voice
+          utterance.volume = audioSettings.voiceVolume || 0.8;
+          
+          // Stop any current speech
+          window.speechSynthesis.cancel();
+          
+          // Speak the message
+          window.speechSynthesis.speak(utterance);
+          
+          // Add visual feedback
+          addMessage("*speaking* " + lastBotMessage.text, 'bot', 'normal', 6);
+          playSound('voice', { volume: 0.4 });
+        } else {
+          addMessage("*static* Voice output not supported in this browser", 'bot', 'error');
+        }
+      } else {
+        addMessage("*whirrs* No bot message to speak", 'bot', 'normal');
       }
+    } else {
+      addMessage("*circuits humming* No messages to speak yet", 'bot', 'normal');
     }
   };
 
@@ -340,16 +369,6 @@ const ChatBot = ({ onNavigate, onScreenContent, className = '' }) => {
 
   return (
     <div className={`chatbot-container ${className} ${isMinimized ? 'minimized' : ''}`}>
-      {/* Bot Screen */}
-      <BotScreen 
-        mood={botMood}
-        intensity={moodIntensity}
-        isVisible={!isMinimized}
-        onContentChange={onScreenContent}
-        personalityTraits={personalityTraits}
-        dynamicQuirks={dynamicQuirks}
-      />
-      
       {/* Chat Interface */}
       <div className="chat-interface">
         {/* Header */}

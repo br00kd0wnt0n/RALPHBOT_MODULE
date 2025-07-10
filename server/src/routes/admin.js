@@ -6,7 +6,9 @@ import {
   assignABTest,
   getPersonalityTraits,
   trackABTestMetric,
-  generateDynamicQuirk
+  generateDynamicQuirk,
+  addQuirk,
+  removeQuirk
 } from '../services/personality.js';
 import personalityService from '../services/personality.js';
 import { 
@@ -90,7 +92,7 @@ router.post('/personality/quirks',
   async (req, res) => {
   try {
     const { trigger, response, mood_trigger, priority, frequency } = req.body;
-    const personality = await personalityService.addQuirk(trigger, response);
+    const personality = await addQuirk(trigger, response);
     
     // Update quirk with additional properties if provided
     if (mood_trigger || priority || frequency) {
@@ -120,7 +122,7 @@ router.delete('/personality/quirks',
   async (req, res) => {
   try {
     const { trigger, response } = req.body;
-    const personality = await personalityService.removeQuirk(trigger, response);
+    const personality = await removeQuirk(trigger, response);
     res.json(personality);
   } catch (error) {
     console.error('Remove quirk error:', error);

@@ -1,0 +1,50 @@
+// This is the initial structure - full files will be created separately
+// Directory structure:
+/*
+ralphbot/
+├── client/                 # React frontend for the bot
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── ChatBot.jsx
+│   │   │   ├── BotScreen.jsx
+│   │   │   └── MessageBubble.jsx
+│   │   ├── services/
+│   │   │   ├── api.js
+│   │   │   └── audio.js
+│   │   ├── utils/
+│   │   │   └── effects.js
+│   │   └── App.jsx
+│   └── package.json
+├── server/                 # Express backend
+│   ├── src/
+│   │   ├── routes/
+│   │   │   ├── chat.js
+│   │   │   └── admin.js
+│   │   ├── services/
+│   │   │   ├── claude.js
+│   │   │   ├── personality.js
+│   │   │   └── analytics.js
+│   │   ├── models/
+│   │   │   └── conversation.js
+│   │   └── server.js
+│   └── package.json
+├── admin/                  # Admin dashboard
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── Dashboard.jsx
+│   │   │   ├── PersonalityEditor.jsx
+│   │   │   └── Analytics.jsx
+│   │   └── App.jsx
+│   └── package.json
+└── package.json (monorepo)
+*/
+
+// This is a preview - full implementation follows in separate artifacts
+export default function RalphBotPreview() {
+  return (
+    <div className="space-theme-preview">
+      <h1>🚀 RALPHBOT Codebase Structure</h1>
+      <p>Ready to build the most charismatic space-dwelling digital assistant!</p>
+    </div>
+  );
+}

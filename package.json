@@ -3,8 +3,10 @@
   "version": "1.0.0",
   "description": "RALPHBOT - A quirky space-themed chatbot for RALPH creative agency",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "concurrently \"npm run client:dev\" \"npm run server:dev\" \"npm run admin:dev\"",
+    "dev": "node unified-server.js",
+    "start": "node unified-server.js",
     "client:dev": "cd client && npm run dev",
     "server:dev": "cd server && npm run dev",
     "admin:dev": "cd admin && npm run dev",
@@ -13,7 +15,6 @@
     "server:build": "cd server && npm run build",
     "admin:build": "cd admin && npm run build",
     "install:all": "npm install && cd client && npm install && cd ../server && npm install && cd ../admin && npm install",
-    "start": "cd server && npm start",
     "deploy": "npm run build && echo '🚀 RALPHBOT ready for deployment!'"
   },
   "workspaces": [

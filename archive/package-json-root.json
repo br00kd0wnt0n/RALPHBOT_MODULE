@@ -1,0 +1,24 @@
+{
+  "name": "ralphbot-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run client:dev\" \"npm run server:dev\" \"npm run admin:dev\"",
+    "client:dev": "cd client && npm run dev",
+    "server:dev": "cd server && npm run dev",
+    "admin:dev": "cd admin && npm run dev",
+    "build": "npm run client:build && npm run server:build && npm run admin:build",
+    "client:build": "cd client && npm run build",
+    "server:build": "cd server && npm run build",
+    "admin:build": "cd admin && npm run build",
+    "deploy": "npm run build && echo 'Ready for Railway deployment'"
+  },
+  "workspaces": [
+    "client",
+    "server",
+    "admin"
+  ],
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

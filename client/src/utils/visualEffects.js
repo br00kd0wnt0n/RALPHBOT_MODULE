@@ -197,6 +197,7 @@ class VisualEffects {
 
   // Screen flicker for errors
   applyScreenFlicker(element, duration = 1000, intensity = 0.5) {
+    if (!element) return; // Guard for undefined/null element
     const originalOpacity = element.style.opacity || '1';
     let startTime = Date.now();
 
