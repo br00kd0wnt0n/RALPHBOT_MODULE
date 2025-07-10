@@ -45,7 +45,7 @@ const PersonalitySchema = new mongoose.Schema({
     intensity: { type: Number, default: 5 }, // 1-10 scale
     last_change: { type: Date, default: Date.now },
     triggers: [{
-      type: String,
+      type: { type: String },
       timestamp: { type: Date, default: Date.now },
       intensity: { type: Number, default: 5 }
     }]
@@ -462,11 +462,13 @@ class PersonalityService {
     this.currentPersonality.mood_states.last_change = new Date();
     
     // Add mood trigger to history
-    this.currentPersonality.mood_states.triggers.push({
-      type: mood,
-      timestamp: new Date(),
-      intensity
-    });
+    if (this.currentPersonality.mood_states.triggers) {
+      this.currentPersonality.mood_states.triggers.push({
+        type: mood,
+        timestamp: new Date(),
+        intensity
+      });
+    }
     
     // Keep only last 10 triggers
     if (this.currentPersonality.mood_states.triggers.length > 10) {

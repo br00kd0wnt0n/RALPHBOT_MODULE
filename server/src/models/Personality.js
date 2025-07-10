@@ -196,6 +196,25 @@ const PersonalitySchema = new mongoose.Schema({
     type: SettingsSchema,
     required: [true, 'Settings are required']
   },
+  mood_states: {
+    current: { type: String, default: 'normal' },
+    intensity: { type: Number, default: 5 },
+    last_change: { type: Date, default: Date.now },
+    triggers: [{
+      type: {
+        type: String,
+        required: true
+      },
+      timestamp: {
+        type: Date,
+        default: Date.now
+      },
+      intensity: {
+        type: Number,
+        default: 5
+      }
+    }]
+  },
   is_active: {
     type: Boolean,
     default: true,

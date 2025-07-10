@@ -10,9 +10,28 @@ import {
 } from './personality.js';
 import winston from 'winston';
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+// Lazy initialization of Anthropic client
+let anthropic = null;
+let initializationAttempted = false;
+
+const getAnthropicClient = () => {
+  if (!initializationAttempted) {
+    initializationAttempted = true;
+    try {
+      if (!process.env.ANTHROPIC_API_KEY) {
+        throw new Error('ANTHROPIC_API_KEY environment variable is not set');
+      }
+      anthropic = new Anthropic({
+        apiKey: process.env.ANTHROPIC_API_KEY,
+      });
+      console.log('✅ Anthropic client initialized successfully');
+    } catch (error) {
+      console.error('❌ Failed to initialize Anthropic client:', error);
+      anthropic = null;
+    }
+  }
+  return anthropic;
+};
 
 const logger = winston.createLogger({
   level: 'info',
@@ -187,8 +206,14 @@ RESPONSE GUIDELINES:
 - Use personality traits from A/B testing: ${JSON.stringify(abTestTraits)}
 `;
 
-      const response = await anthropic.messages.create({
-        model: 'claude-3-sonnet-20240229',
+      // Get Anthropic client (lazy initialization)
+      const client = getAnthropicClient();
+      if (!client) {
+        throw new Error('Anthropic client is not initialized. Please check your API key.');
+      }
+
+      const response = await client.messages.create({
+        model: 'claude-3-haiku-20240307',
         max_tokens: 1024,
         system: systemPrompt,
         messages: history

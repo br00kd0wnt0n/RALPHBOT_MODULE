@@ -1,10 +1,17 @@
 // server/src/unified-server.js
-import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+
+// CRITICAL: Load environment variables FIRST before any other imports
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.join(__dirname, '.env') });
+
+// Now import everything else after env vars are loaded
+import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import winston from 'winston';
@@ -14,10 +21,11 @@ import mongoose from 'mongoose';
 import chatRoutes from './server/src/routes/chat.js';
 import adminRoutes from './server/src/routes/admin.js';
 
-dotenv.config();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Debug environment variables
+console.log('Environment check:');
+console.log('- NODE_ENV:', process.env.NODE_ENV);
+console.log('- ANTHROPIC_API_KEY:', process.env.ANTHROPIC_API_KEY ? 'Set' : 'Not set');
+console.log('- MONGODB_URI:', process.env.MONGODB_URI ? 'Set' : 'Not set');
 
 const app = express();
 const httpServer = createServer(app);
