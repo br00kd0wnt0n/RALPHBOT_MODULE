@@ -212,29 +212,33 @@ const ChatBot = ({ onNavigate, onScreenContent, className = '' }) => {
       // Send message to backend
       const response = await sendMessage(userMessage, userId);
       
+      // Debug logging
+      console.log('API Response received:', response);
+      
       // Hide typing indicator
       setIsTyping(false);
       
-      if (response.success) {
-        const { message, mood, intensity, traits } = response.data;
+      if (response.response) {
+        const { response: message, mood, confidence, suggestions, personalityTraits } = response;
+        const intensity = confidence * 10; // Convert confidence to intensity scale
         
         // Update bot mood
         setBotMood(mood);
         setMoodIntensity(intensity);
         
         // Add bot response with effects
-        addMessage(message, 'bot', mood, intensity, traits);
+        addMessage(message, 'bot', mood, intensity, personalityTraits);
         
         // Apply mood-based visual effects
         if (mood === 'excited') {
           createParticles(messagesEndRef.current, 20);
-        } else if (mood === 'error') {
-          screenFlicker(1000);
+        } else if (mood === 'error' && messagesEndRef.current) {
+          screenFlicker(messagesEndRef.current, 1000);
         }
         
         // Update personality if provided
-        if (traits) {
-          handlePersonalityUpdate({ settings: traits });
+        if (personalityTraits) {
+          handlePersonalityUpdate({ settings: personalityTraits });
         }
         
         // Trigger voice synthesis if enabled
@@ -248,7 +252,11 @@ const ChatBot = ({ onNavigate, onScreenContent, className = '' }) => {
         setMoodIntensity(8);
         addMessage("Oops! Something went wrong with my circuits. Let me try again!", 'bot', 'error', 8);
         playSound('error', { volume: 0.5 });
-        screenFlicker(1500);
+        // Use a more robust element selection for screen flicker
+        const container = messagesEndRef.current || document.querySelector('.chatbot-container') || document.body;
+        if (container && container.style) {
+          screenFlicker(container, 1500);
+        }
       }
       
     } catch (error) {
@@ -259,7 +267,11 @@ const ChatBot = ({ onNavigate, onScreenContent, className = '' }) => {
       setMoodIntensity(8);
       addMessage("My circuits are having a moment! Please try again.", 'bot', 'error', 8);
       playSound('error', { volume: 0.5 });
-      screenFlicker(1500);
+      // Use a more robust element selection for screen flicker
+      const container = messagesEndRef.current || document.querySelector('.chatbot-container') || document.body;
+      if (container && container.style) {
+        screenFlicker(container, 1500);
+      }
     }
   };
 

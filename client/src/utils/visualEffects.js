@@ -36,6 +36,7 @@ class VisualEffects {
 
   // Glitch text effect
   applyGlitchEffect(element, duration = 2000, intensity = 0.3) {
+    if (!element || !element.style) return; // Guard for undefined/null element
     const originalText = element.textContent;
     const glitchChars = '!@#$%^&*()_+-=[]{}|;:,.<>?';
     let startTime = Date.now();
@@ -112,6 +113,7 @@ class VisualEffects {
 
   // Static/interference effect during thinking
   applyStaticEffect(element, duration = 3000) {
+    if (!element || !element.style) return; // Guard for undefined/null element
     const originalContent = element.innerHTML;
     const staticChars = '█▓▒░▄▌▐▀■□▪▫▬▭▮▯▰▱▲△▴▵▶▷▸▹►▻▼▽▾▿◀◁◂◃◄◅◆◇◈◉◊○◌◍◎●◐◑◒◓◔◕◖◗◘◙◚◛◜◝◞◟◠◡◢◣◤◥◦◧◨◩◪◫◬◭◮◯';
     let startTime = Date.now();
@@ -197,7 +199,16 @@ class VisualEffects {
 
   // Screen flicker for errors
   applyScreenFlicker(element, duration = 1000, intensity = 0.5) {
-    if (!element) return; // Guard for undefined/null element
+    // Multiple layers of protection
+    if (!element) {
+      console.warn('applyScreenFlicker: element is null or undefined');
+      return;
+    }
+    if (!element.style) {
+      console.warn('applyScreenFlicker: element.style is undefined');
+      return;
+    }
+    
     const originalOpacity = element.style.opacity || '1';
     let startTime = Date.now();
 
@@ -223,6 +234,7 @@ class VisualEffects {
 
   // Smooth mood transitions
   applyMoodTransition(element, mood, duration = 1000) {
+    if (!element || !element.style) return; // Guard for undefined/null element
     const moodStyles = {
       normal: {
         color: '#ffffff',
@@ -463,6 +475,7 @@ class VisualEffects {
 
   // Hologram effect
   applyHologramEffect(element, duration = 3000) {
+    if (!element || !element.style) return; // Guard for undefined/null element
     const originalOpacity = element.style.opacity || '1';
     let startTime = Date.now();
 

@@ -70,7 +70,7 @@ export const VisualEffectsProvider = ({ children }) => {
 
     // Screen flicker
     screenFlicker: (element, duration = 1000, intensity = 0.5) => {
-      if (element) {
+      if (element && element.style) {
         applyScreenFlicker(element, duration, intensity);
       }
     },
